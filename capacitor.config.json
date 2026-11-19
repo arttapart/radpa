@@ -1,0 +1,6 @@
+{
+  "appId": "io.github.arttapart.radpa",
+  "appName": "ردپا",
+  "webDir": "dist",
+  "android": { "backgroundColor": "#F6F4EF" }
+}
