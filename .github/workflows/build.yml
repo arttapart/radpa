@@ -39,6 +39,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
           cp app/build/outputs/apk/debug/app-debug.apk ../radpa.apk
+      - name: Refresh word list cache
+        run: curl -fsS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/public/words.txt" || true
       - uses: actions/upload-artifact@v4
         with:
           name: radpa-apk

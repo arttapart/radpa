@@ -1,13 +1,14 @@
 // موتور بازی ردپا — فقط روی گوشی میزبان اجرا می‌شود و حالت کامل را پخش می‌کند.
 import { clean, validateClue, nearSame, judgeGuess } from './fa.js';
-import { wordPool } from './words.js';
+import { pickThree } from './words.js';
+
+export const BOT_NAMES = ['رباتک', 'آهنی', 'پیچ‌ومهره', 'جرقه', 'بیپ', 'مداربسته'];
 
 export const DEFAULT_SETTINGS = {
   rounds: 4,          // هر دور = یک نوبت برای هر تیم
   clueTime: 60,       // ثانیه
   guessTime: 45,
   voteTime: 25,
-  categories: [],     // خالی = همه
 };
 
 const now = () => Date.now();
@@ -41,9 +42,11 @@ export function newState(code, hostId) {
 }
 
 export class HostGame {
-  constructor(state) {
+  constructor(state, words = []) {
     this.s = state;
+    this.words = words;   // [{w, g, c}] — فقط روی گوشی میزبان
   }
+  humans(team) { return this.teamMembers(team).filter((p) => !p.bot); }
 
   // ---------- کمکی‌ها ----------
   get turn() { return this.s.turn; }
@@ -59,8 +62,12 @@ export class HostGame {
     const t = this.turn;
     return this.teamMembers(t.team, true).filter((p) => p.id !== t.guesserId);
   }
+  pickers() {
+    return this.cluers().filter((p) => !p.bot);
+  }
   opponents() {
-    return this.teamMembers(1 - this.turn.team, true);
+    // ربات‌ها خط نمی‌زنند، پس فقط آدم‌ها حساب می‌شوند
+    return this.teamMembers(1 - this.turn.team, true).filter((p) => !p.bot);
   }
   bump() { this.s.v++; }
 
@@ -85,7 +92,7 @@ export class HostGame {
   setOnline(onlineIds) {
     let changed = false;
     for (const p of Object.values(this.s.players)) {
-      const on = p.id === this.s.hostId || onlineIds.has(p.id);
+      const on = p.bot || p.id === this.s.hostId || onlineIds.has(p.id);
       if (p.online !== on) { p.online = on; changed = true; }
     }
     if (changed) {
@@ -98,6 +105,15 @@ export class HostGame {
   shuffleTeams() {
     const ids = shuffle(Object.keys(this.s.players));
     ids.forEach((id, i) => { this.s.players[id].team = i % 2; });
+    this.bump();
+  }
+
+  addBot(team) {
+    const s = this.s;
+    const used = new Set(Object.values(s.players).filter((p) => p.bot).map((p) => p.name));
+    const name = BOT_NAMES.find((n) => !used.has(n)) || `ربات ${Object.keys(s.players).length}`;
+    const id = 'bot' + rid();
+    s.players[id] = { id, name, avatar: '🤖', team, online: true, bot: true, joinedAt: now() };
     this.bump();
   }
 
@@ -120,13 +136,15 @@ export class HostGame {
     if ('rounds' in patch) st.rounds = clamp(patch.rounds, 1, 12);
     if ('clueTime' in patch) st.clueTime = clamp(patch.clueTime, 20, 240);
     if ('guessTime' in patch) st.guessTime = clamp(patch.guessTime, 15, 180);
-    if ('categories' in patch) st.categories = [...patch.categories];
     this.bump();
   }
 
   canStart() {
-    const a = this.teamMembers(0).length, b = this.teamMembers(1).length;
-    if (a < 2 || b < 2) return 'هر تیم دست‌کم ۲ نفر لازم دارد';
+    for (const t of [0, 1]) {
+      if (this.teamMembers(t).length < 2) return 'هر تیم دست‌کم ۲ عضو لازم دارد (آدم یا ربات)';
+      if (this.humans(t).length < 1) return 'هر تیم دست‌کم یک آدم لازم دارد تا حدس بزند';
+    }
+    if (!this.words.length) return 'بانک واژه هنوز بارگیری نشده';
     return null;
   }
 
@@ -144,29 +162,26 @@ export class HostGame {
   }
 
   // ---------- نوبت ----------
-  pickWord() {
-    const s = this.s;
-    let pool = wordPool(s.settings.categories).filter((w) => !s.usedWords.includes(w));
-    if (!pool.length) { s.usedWords = []; pool = wordPool(s.settings.categories); }
-    const w = pool[Math.floor(Math.random() * pool.length)];
-    s.usedWords.push(w);
-    return w;
-  }
-
   startTurn() {
     const s = this.s;
     const team = s.turnNo % 2;
-    const members = this.teamMembers(team);
+    const members = this.humans(team);
     const online = members.filter((p) => p.online);
-    const list = online.length >= 2 ? online : members;
+    const list = online.length ? online : members;
     const idx = s.nextGuesser[team] % list.length;
     s.nextGuesser[team] = idx + 1;
+    const hasBot = this.teamMembers(team).some((p) => p.bot);
+    const options = pickThree(this.words, s.usedWords, hasBot);
+    options.forEach((o) => s.usedWords.push(o.w));
+    if (s.usedWords.length > this.words.length - 6) s.usedWords = [];
     s.turn = {
       id: rid(),
       team,
       guesserId: list[idx].id,
-      word: this.pickWord(),
-      skips: [],
+      options: options.map((o) => o.w),
+      picks: {},           // pid -> index
+      pickDone: [],
+      word: null,
       clues: {},           // pid -> {text, at}
       list: [],            // پس از پایان سرنخ‌ها: [{id, pid, text, dup, strikes:[], removed}]
       confirms: [],
@@ -174,10 +189,46 @@ export class HostGame {
       verdict: null,       // correct | wrong | giveup | timeout
       votes: {},
       startedAt: now(),
-      deadline: now() + s.settings.clueTime * 1000,
+      deadline: null,
     };
-    s.phase = 'clue';
+    s.phase = 'pick';
+    if (this.pickers().length === 0) this.resolvePick();
     this.bump();
+  }
+
+  resolvePick() {
+    const t = this.turn;
+    const counts = [0, 0, 0];
+    for (const i of Object.values(t.picks)) counts[i]++;
+    const max = Math.max(...counts);
+    const top = counts.map((c, i) => (c === max ? i : -1)).filter((i) => i >= 0);
+    const idx = top[Math.floor(Math.random() * top.length)];
+    t.word = t.options[idx];
+    t.pickIndex = idx;
+    this.startClues();
+  }
+
+  startClues() {
+    const t = this.turn;
+    const s = this.s;
+    s.phase = 'clue';
+    t.deadline = now() + s.settings.clueTime * 1000;
+    // زمان‌بندی سرنخ ربات‌ها
+    const bots = this.cluers().filter((p) => p.bot);
+    const span = Math.min(14, s.settings.clueTime * 0.4);
+    t.botPlan = Object.fromEntries(bots.map((b) => [b.id, now() + (3 + Math.random() * span) * 1000]));
+    this.bump();
+  }
+
+  botClue(botId) {
+    const t = this.turn;
+    const pool = (this.words.find((x) => x.w === t.word)?.c || []).filter((c) => !validateClue(c, t.word));
+    const taken = new Set(Object.values(t.clues).map((c) => c.text));
+    const fresh = pool.filter((c) => !taken.has(c));
+    const list = fresh.length ? fresh : pool;
+    const text = list.length ? list[Math.floor(Math.random() * list.length)] : '؟';
+    t.clues[botId] = { text, at: now(), bot: true };
+    delete t.botPlan[botId];
   }
 
   // ---------- کنش‌های بازیکن ----------
@@ -188,6 +239,28 @@ export class HostGame {
     if (a.type === 'join') return this.join(pid, a);
     if (!p) return false;
     switch (a.type) {
+      case 'pick': {
+        if (s.phase !== 'pick' || pid === t.guesserId || p.team !== t.team) return false;
+        if (t.pickDone.includes(pid)) return false;
+        const i = Number(a.index);
+        if (!(i >= 0 && i < t.options.length)) return false;
+        t.picks[pid] = i;
+        this.bump();
+        return true;
+      }
+      case 'pickok': {
+        if (s.phase !== 'pick' || !(pid in t.picks)) return false;
+        if (!t.pickDone.includes(pid)) t.pickDone.push(pid);
+        this.bump();
+        this.checkProgress();
+        return true;
+      }
+      case 'pickundo': {
+        if (s.phase !== 'pick') return false;
+        t.pickDone = t.pickDone.filter((x) => x !== pid);
+        this.bump();
+        return true;
+      }
       case 'clue': {
         if (s.phase !== 'clue' || pid === t.guesserId || p.team !== t.team) return false;
         if (validateClue(a.text, t.word)) return false;
@@ -199,21 +272,6 @@ export class HostGame {
       case 'unclue': {
         if (s.phase !== 'clue' || !t.clues[pid]) return false;
         delete t.clues[pid];
-        this.bump();
-        return true;
-      }
-      case 'skip': {
-        if (s.phase !== 'clue' || pid === t.guesserId || p.team !== t.team) return false;
-        const i = t.skips.indexOf(pid);
-        if (i >= 0) t.skips.splice(i, 1); else t.skips.push(pid);
-        const need = Math.floor(this.cluers().length / 2) + 1;
-        if (t.skips.length >= need) {
-          t.word = this.pickWord();
-          t.skips = [];
-          t.clues = {};
-          t.skipped = (t.skipped || 0) + 1;
-          t.deadline = now() + s.settings.clueTime * 1000;
-        }
         this.bump();
         return true;
       }
@@ -258,7 +316,7 @@ export class HostGame {
         return true;
       }
       case 'vote': {
-        if (s.phase !== 'vote') return false;
+        if (s.phase !== 'vote' || p.bot) return false;
         t.votes[pid] = !!a.ok;
         this.bump();
         this.checkProgress();
@@ -372,7 +430,10 @@ export class HostGame {
     const s = this.s;
     const t = s.turn;
     if (!t) return;
-    if (s.phase === 'clue') {
+    if (s.phase === 'pick') {
+      const pk = this.pickers();
+      if (pk.every((p) => t.pickDone.includes(p.id))) this.resolvePick();
+    } else if (s.phase === 'clue') {
       const cl = this.cluers();
       if (cl.length && cl.every((p) => t.clues[p.id])) this.closeClues();
     } else if (s.phase === 'filter') {
@@ -380,7 +441,7 @@ export class HostGame {
       const opp = this.opponents();
       if (opp.length === 0 || opp.every((p) => t.confirms.includes(p.id))) this.startGuess();
     } else if (s.phase === 'vote') {
-      const online = Object.values(s.players).filter((p) => p.online);
+      const online = Object.values(s.players).filter((p) => p.online && !p.bot);
       if (online.every((p) => p.id in t.votes)) this.resolveVote();
     } else if (s.phase === 'guess') {
       if (!s.players[t.guesserId]?.online && Object.keys(s.players).length) {
@@ -401,9 +462,20 @@ export class HostGame {
   tick() {
     const s = this.s;
     const t = s.turn;
+    if (s.phase === 'clue' && t?.botPlan) {
+      const due = Object.entries(t.botPlan).filter(([, at]) => now() >= at);
+      if (due.length) {
+        due.forEach(([id]) => this.botClue(id));
+        this.bump();
+        this.checkProgress();
+        return true;
+      }
+    }
     if (!t || !t.deadline || now() < t.deadline) return false;
-    if (s.phase === 'clue') this.closeClues();
-    else if (s.phase === 'guess') this.finishTurn('timeout');
+    if (s.phase === 'clue') {
+      Object.keys(t.botPlan || {}).forEach((id) => this.botClue(id));
+      this.closeClues();
+    } else if (s.phase === 'guess') this.finishTurn('timeout');
     else if (s.phase === 'vote') this.resolveVote();
     else return false;
     return true;

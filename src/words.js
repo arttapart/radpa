@@ -1,74 +1,80 @@
-// بانک واژه‌ی ردپا — واژه‌های فارسی، دسته‌بندی‌شده
-const raw = {
-  animals: {
-    title: 'جانوران',
-    words: `شیر ببر پلنگ یوزپلنگ گرگ روباه شغال خرس پاندا فیل زرافه کرگدن اسب‌آبی گورخر شتر اسب الاغ گاو گوسفند بز
-    خوک خرگوش سنجاب موش گربه سگ میمون گوریل کانگورو کوالا خفاش جغد عقاب شاهین کلاغ طوطی کبوتر گنجشک پنگوئن
-    لک‌لک مرغابی قو بوقلمون خروس طاووس فلامینگو نهنگ دلفین کوسه هشت‌پا ستاره‌دریایی خرچنگ میگو لاک‌پشت تمساح
-    مارمولک آفتاب‌پرست مار قورباغه زنبور پروانه مورچه عنکبوت عقرب سوسک کرم حلزون کفشدوزک شترمرغ گوزن آهو`,
-  },
-  food: {
-    title: 'خوراکی‌ها',
-    words: `قورمه‌سبزی قیمه فسنجان کباب جوجه‌کباب آبگوشت دیزی آش رشته کشک بادمجان میرزاقاسمی کوکو کتلت ماکارونی
-    پیتزا همبرگر ساندویچ سوسیس الویه تهدیگ زرشک‌پلو باقالی‌پلو عدس‌پلو حلیم کله‌پاچه نان سنگک بربری لواش
-    پنیر ماست دوغ شیر کره عسل مربا تخم‌مرغ املت سیب پرتقال موز هندوانه خربزه انار انگور توت‌فرنگی گیلاس
-    آلبالو هلو زردآلو انجیر خرما لیمو نارگیل آناناس گوجه خیار هویج پیاز سیب‌زمینی کاهو کلم ذرت پسته بادام
-    گردو فندق تخمه بستنی شکلات کیک بیسکویت پشمک گز سوهان باقلوا زولبیا شله‌زرد فالوده لواشک چای قهوه آبمیوه`,
-  },
-  objects: {
-    title: 'اشیا',
-    words: `کلید قفل در پنجره میز صندلی مبل تخت بالش پتو فرش پرده آینه شانه مسواک صابون حوله قیچی سوزن نخ دکمه
-    عینک ساعت انگشتر گردنبند کیف چمدان چتر کلاه کفش جوراب دستکش شال کمربند لباس کراوات دوربین تلفن موبایل
-    رایانه لپ‌تاپ تلویزیون رادیو هدفون باتری لامپ شمع کبریت فندک چراغ‌قوه یخچال اجاق قابلمه ماهیتابه بشقاب
-    قاشق چنگال چاقو لیوان فنجان قوری سماور کتری جارو اتو ماشین‌لباسشویی کتاب دفتر مداد خودکار پاک‌کن خط‌کش
-    تخته‌سیاه گچ نقشه کره‌جغرافیا قطب‌نما بادبادک بادکنک توپ عروسک تاس شطرنج ورق پازل گیتار پیانو ویولن تار
-    سه‌تار دف تنبک طبل فلوت شیپور نردبان چکش پیچ‌گوشتی میخ اره طناب زنجیر سطل بیل فرغون دوچرخه موتور اتوبوس
-    قطار هواپیما کشتی قایق زیردریایی موشک بالگرد تاکسی آمبولانس تراکتور`,
-  },
-  places: {
-    title: 'مکان‌ها',
-    words: `مدرسه دانشگاه بیمارستان داروخانه کتابخانه موزه سینما تئاتر رستوران کافه نانوایی قصابی آرایشگاه بانک
-    پستخانه فرودگاه ایستگاه مترو پارک باغ‌وحش استادیوم استخر باشگاه مسجد بازار پاساژ هتل کاروانسرا قلعه کاخ
-    زندان دادگاه کلانتری آتش‌نشانی کارخانه مزرعه طویله آسیاب فانوس‌دریایی بندر ساحل جزیره جنگل کویر بیابان
-    کوه آتشفشان غار دره رودخانه دریاچه آبشار چشمه یخچال‌طبیعی قطب آشپزخانه حمام پشت‌بام زیرزمین آسانسور
-    پله حیاط بالکن انباری گلخانه سیرک شهربازی کتابفروشی گورستان رصدخانه آزمایشگاه`,
-  },
-  jobs: {
-    title: 'شغل‌ها',
-    words: `پزشک پرستار دندانپزشک داروساز معلم استاد دانشجو مهندس معمار نجار بنا نقاش مجسمه‌ساز عکاس خبرنگار
-    نویسنده شاعر بازیگر کارگردان خواننده نوازنده رقصنده آشپز نانوا قصاب کشاورز دامدار ماهیگیر شکارچی
-    راننده خلبان ملوان فضانورد پلیس آتش‌نشان سرباز قاضی وکیل کارآگاه جاسوس دزد دلقک شعبده‌باز جادوگر
-    آرایشگر خیاط کفاش ساعت‌ساز طلافروش مکانیک برقکار لوله‌کش باغبان پستچی فروشنده صندوقدار گارسون
-    مهماندار راهنمای‌تور دامپزشک روانشناس برنامه‌نویس دانشمند باستان‌شناس فوتبالیست داور مربی قهرمان پادشاه
-    ملکه شاهزاده دزدِدریایی`,
-  },
-  nature: {
-    title: 'طبیعت و آسمان',
-    words: `خورشید ماه ستاره سیاره زمین مریخ زحل کهکشان شهاب دنباله‌دار ابر باران برف تگرگ رعد برق رنگین‌کمان
-    مه باد طوفان گردباد زلزله سیل یخ آتش دود خاکستر سنگ شن خاک گل کویر الماس طلا نقره آهن مس جنگل درخت
-    چنار سرو بید نخل کاج بلوط ریشه برگ شاخه گل رز لاله نرگس شقایق یاس آفتابگردان کاکتوس قارچ خزه چمن
-    بهار تابستان پاییز زمستان صبح ظهر شب نیمه‌شب طلوع غروب سایه نور موج صدف مروارید مرجان`,
-  },
-  sport: {
-    title: 'ورزش و سرگرمی',
-    words: `فوتبال والیبال بسکتبال تنیس پینگ‌پنگ بدمینتون کشتی بوکس کاراته تکواندو جودو شنا شیرجه دوچرخه‌سواری
-    اسکی اسکیت کوهنوردی صخره‌نوردی ماراتن دو پرش وزنه‌برداری ژیمناستیک چوگان سوارکاری تیراندازی شمشیربازی
-    گلف بولینگ بیلیارد دارت شطرنج تخته‌نرد منچ دومینو قایم‌باشک گرگم‌به‌هوا طناب‌بازی الک‌دولک هفت‌سنگ
-    پاراگلایدر غواصی موج‌سواری ماهیگیری کمپ پیک‌نیک کارتون انیمیشن سریال فیلم کنسرت جشن تولد عروسی نوروز
-    چهارشنبه‌سوری یلدا سیزده‌بدر هفت‌سین عید مسابقه جایزه مدال جام`,
-  },
-};
+// بانک واژه: از سرور خوانده می‌شود تا بدون نصب دوباره قابل تغییر باشد.
+import { nearSame, normalize } from './fa.js';
 
-export const CATEGORIES = Object.fromEntries(
-  Object.entries(raw).map(([key, { title, words }]) => [
-    key,
-    { title, words: [...new Set(words.split(/\s+/).map((w) => w.trim()).filter(Boolean))] },
-  ]),
-);
+const REPO = 'arttapart/radpa';
+const PATH = 'public/words.txt';
+const SOURCES = [
+  () => `https://raw.githubusercontent.com/${REPO}/main/${PATH}?t=${Date.now()}`,
+  () => `https://cdn.jsdelivr.net/gh/${REPO}@main/${PATH}`,
+  () => `https://arttapart.github.io/radpa/words.txt?t=${Date.now()}`,
+];
+const LS_KEY = 'radpa.words';
 
-export function wordPool(categoryKeys) {
-  const keys = categoryKeys && categoryKeys.length ? categoryKeys : Object.keys(CATEGORIES);
-  const pool = new Set();
-  for (const k of keys) for (const w of CATEGORIES[k]?.words || []) pool.add(w);
-  return [...pool];
+/** فرمت فایل: هر خط یک واژه، اختیاری «واژه: سرنخ، سرنخ»، خطوط # = گروه */
+export function parseWords(text) {
+  const out = [];
+  const seen = new Set();
+  let group = 'g0';
+  for (const rawLine of String(text).split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line.startsWith('#')) { group = line.slice(1).trim() || group; continue; }
+    const [w, rest] = line.split(/[:：]/);
+    const word = (w || '').replace(/[يى]/g, 'ی').replace(/ك/g, 'ک').trim();
+    const key = normalize(word);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    const clues = (rest || '').split(/[،,]/).map((c) => c.trim()).filter((c) => c && !/\s/.test(c));
+    out.push({ w: word, g: group, c: clues });
+  }
+  return out;
+}
+
+async function fetchText(url, ms = 5000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' });
+    if (!r.ok) throw new Error(String(r.status));
+    return await r.text();
+  } finally { clearTimeout(t); }
+}
+
+/** آخرین فهرست را از سرور می‌گیرد؛ اگر نشد، نسخه‌ی ذخیره‌شده یا همراه برنامه */
+export async function loadWords() {
+  for (const src of SOURCES) {
+    try {
+      const txt = await fetchText(src());
+      const list = parseWords(txt);
+      if (list.length >= 30) {
+        try { localStorage.setItem(LS_KEY, txt); } catch {}
+        return { list, from: 'server' };
+      }
+    } catch {}
+  }
+  try {
+    const cached = localStorage.getItem(LS_KEY);
+    if (cached) return { list: parseWords(cached), from: 'cache' };
+  } catch {}
+  const txt = await fetchText('./words.txt');
+  return { list: parseWords(txt), from: 'bundled' };
+}
+
+/** سه واژه‌ی متنوع: از سه گروه متفاوت، بدون شباهت ظاهری، ترجیحاً با حرف اول متفاوت */
+export function pickThree(list, used = [], needClues = false) {
+  const usedSet = new Set(used);
+  let pool = list.filter((x) => !usedSet.has(x.w) && (!needClues || x.c.length >= 2));
+  if (pool.length < 3) pool = list.filter((x) => !needClues || x.c.length >= 2);
+  if (pool.length < 3) pool = list;
+  const chosen = [];
+  for (let attempt = 0; attempt < 400 && chosen.length < 3; attempt++) {
+    const cand = pool[Math.floor(Math.random() * pool.length)];
+    const strict = attempt < 250;
+    if (chosen.some((c) => c.w === cand.w)) continue;
+    if (strict && chosen.some((c) => c.g === cand.g)) continue;
+    if (strict && chosen.some((c) => c.w[0] === cand.w[0])) continue;
+    if (chosen.some((c) => nearSame(c.w, cand.w))) continue;
+    chosen.push(cand);
+  }
+  return chosen;
 }

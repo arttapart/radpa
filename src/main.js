@@ -6,12 +6,18 @@ import './style.css';
 import QRCode from 'qrcode';
 import { morph } from './morph.js';
 import { Session, savedSession, hostResumeData } from './session.js';
-import { CATEGORIES } from './words.js';
+import { play, toggleMute, isMuted, unlock } from './sound.js';
+import { confetti } from './confetti.js';
 import { validateClue } from './fa.js';
 
 // ---------- ثابت‌ها و کمکی‌ها ----------
 const WEB_URL = 'https://arttapart.github.io/radpa/';
-const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐸', '🐙', '🦉', '🐧', '🐢', '🦄', '🐝', '🐳', '🦔', '🐨', '🦩', '🐲'];
+const AVATARS = [
+  '🦊', '🐼', '🐯', '🦁', '🐸', '🐙', '🦉', '🐧', '🐢', '🦄', '🐝', '🐳', '🦔', '🐨', '🦩', '🐲',
+  '🐱', '🐶', '🐰', '🐻', '🐵', '🦋', '🐞', '🦖', '🐬', '🦀', '🦒', '🦓', '🐘', '🦜', '🐺', '🦝',
+  '😎', '🤠', '🥸', '🤓', '😈', '👻', '👽', '🤡', '🧙', '🧛', '🧜', '🥷', '👑', '🎩', '🌵', '🌻',
+  '🍉', '🍕', '🍩', '🌶️', '🥑', '🍄', '⚽', '🎸', '🎲', '🚀', '⭐', '🔥', '🌈', '💎', '🪐', '☕',
+];
 const TEAM = ['آبی', 'نارنجی'];
 const FA = '۰۱۲۳۴۵۶۷۸۹';
 const fa = (n) => String(n).replace(/\d/g, (d) => FA[d]);
@@ -46,6 +52,9 @@ const icon = {
   shuffle: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>',
   crown: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg>',
   x: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  sound: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+  mute: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>',
+  bot: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
 };
 
@@ -54,6 +63,8 @@ const logo = (size = 'lg') => `
     <span class="steps"><i></i><i></i><i></i></span>
     <span class="logo-word">ردپا</span>
   </div>`;
+
+const muteBtn = () => `<button class="icon-btn" data-act="mute" aria-label="صدا">${isMuted() ? icon.mute : icon.sound}</button>`;
 
 function avatarOf(p) { return `<span class="av">${esc(p?.avatar || '🙂')}</span>`; }
 function nameOf(id) { return esc(session.state?.players[id]?.name || '؟'); }
@@ -164,7 +175,6 @@ function viewLobby() {
   const players = Object.values(s.players).sort((a, b) => a.joinedAt - b.joinedAt);
   const qr = qrFor(s.code);
   const st = s.settings;
-  const cats = st.categories;
   const reason = isHost ? session.game.canStart() : null;
   return `
   <section class="screen lobby" data-key="lobby">
@@ -172,6 +182,7 @@ function viewLobby() {
       <button class="icon-btn" data-act="leave" aria-label="خروج">${icon.back}</button>
       ${logo('sm')}
       <span class="spacer"></span>
+      ${muteBtn()}
     </div>
 
     <div class="card room">
@@ -189,6 +200,7 @@ function viewLobby() {
         return `<div class="team team-${t}">
           <div class="team-head"><span class="dot"></span>تیم ${TEAM[t]}<span class="count">${fa(list.length)}</span></div>
           <ul class="chips">${list.map((p) => playerChip(p, s.hostId, isHost)).join('') || '<li class="empty">هنوز کسی نیست</li>'}</ul>
+          ${isHost ? `<button class="add-bot" data-act="bot" data-v="${t}">${icon.bot}<span>افزودن ربات</span></button>` : ''}
         </div>`;
       }).join('')}
     </div>
@@ -203,12 +215,8 @@ function viewLobby() {
         ${stepper('تعداد دور', 'rounds', st.rounds, 1, '')}
         ${stepper('زمان سرنخ', 'clueTime', st.clueTime, 10, 'ثانیه')}
         ${stepper('زمان حدس', 'guessTime', st.guessTime, 5, 'ثانیه')}
-        <div class="cats">
-          <button class="tag ${cats.length === 0 ? 'on' : ''}" data-act="cat" data-v="*">همه</button>
-          ${Object.entries(CATEGORIES).map(([k, c]) => `<button class="tag ${cats.includes(k) ? 'on' : ''}" data-act="cat" data-v="${k}">${c.title}</button>`).join('')}
-        </div>` : `
-        <p class="summary">${fa(st.rounds)} دور · سرنخ ${fa(st.clueTime)} ثانیه · حدس ${fa(st.guessTime)} ثانیه</p>
-        <p class="summary muted">${cats.length ? cats.map((k) => CATEGORIES[k]?.title).join('، ') : 'همه‌ی دسته‌ها'}</p>`}
+        <p class="hint words-src">${session.wordCount ? `${fa(session.wordCount)} واژه ${session.wordsFrom === 'server' ? 'از سرور' : session.wordsFrom === 'cache' ? '(نسخه‌ی ذخیره‌شده)' : '(نسخه‌ی داخل برنامه)'}` : 'بانک واژه بارگیری نشد'}</p>` : `
+        <p class="summary">${fa(st.rounds)} دور · سرنخ ${fa(st.clueTime)} ثانیه · حدس ${fa(st.guessTime)} ثانیه</p>`}
     </div>
 
     <div class="bottom">
@@ -277,6 +285,38 @@ function clueList(t, mode) {
   }).join('')}</ul>`;
 }
 
+function viewPick(t, r) {
+  const s = session.state;
+  const pickers = Object.values(s.players).filter((p) => p.team === t.team && p.id !== t.guesserId && p.online && !p.bot);
+  if (r === 'cluer') {
+    const mine = t.picks[session.id];
+    const done = t.pickDone.includes(session.id);
+    return `
+      <p class="role-line">یک واژه برای <b>${nameOf(t.guesserId)}</b> انتخاب کن</p>
+      <ul class="options">${t.options.map((w, i) => {
+        const voters = Object.entries(t.picks).filter(([, v]) => v === i).map(([pid]) => s.players[pid]);
+        return `<li style="--i:${i}" data-key="op-${i}">
+          <button class="option opt-${i} ${mine === i ? 'on' : ''}" ${done ? 'disabled' : `data-act="pick" data-v="${i}"`}>
+            <b>${esc(w)}</b>
+            <span class="voters">${voters.map((p) => `<i>${esc(p?.avatar || '')}</i>`).join('')}</span>
+            ${mine === i ? `<span class="tick">${icon.check}</span>` : ''}
+          </button>
+        </li>`;
+      }).join('')}</ul>
+      ${statusRow(pickers, (p) => t.pickDone.includes(p.id))}
+      ${done
+        ? `<button class="btn ghost big" data-act="pickundo">منتظر بقیه… (تغییر انتخاب)</button>`
+        : `<button class="btn primary big" data-act="pickok" ${mine == null ? 'disabled' : ''}>تأیید</button>`}
+      <p class="hint center">انتخاب بیشترِ تیم، واژه‌ی اصلی می‌شود. زمان بعد از تأیید همه شروع می‌شود.</p>`;
+  }
+  return `<div class="center-block">
+    <div class="eyes">${r === 'guesser' ? '🙈' : '🤔'}</div>
+    <h2>${r === 'guesser' ? 'تو حدس‌زنی!' : `تیم ${TEAM[t.team]} دارد واژه انتخاب می‌کند`}</h2>
+    <p class="muted">${r === 'guesser' ? 'چشم‌هایت را ببند. هم‌تیمی‌هایت دارند واژه انتخاب می‌کنند.' : 'وقتی واژه انتخاب شد، تو هم آن را می‌بینی.'}</p>
+    ${statusRow(pickers, (p) => t.pickDone.includes(p.id))}
+  </div>`;
+}
+
 function viewClue(t, r) {
   const s = session.state;
   const team = Object.values(s.players).filter((p) => p.team === t.team && p.id !== t.guesserId && p.online);
@@ -292,20 +332,23 @@ function viewClue(t, r) {
   if (r === 'cluer') {
     const mine = t.clues[session.id];
     const err = ui.clue ? validateClue(ui.clue, t.word) : null;
-    const need = Math.floor(team.length / 2) + 1;
-    const skipped = t.skips.includes(session.id);
     return `
-      <p class="role-line">سرنخ بده به <b>${nameOf(t.guesserId)}</b></p>
-      ${wordCard(t.word)}
+      <div class="word-strip opt-${t.pickIndex ?? 0}"><span>واژه</span><b data-key="w-${esc(t.word)}" class="pop">${esc(t.word)}</b></div>
       ${mine
-        ? `<div class="card sent" data-key="sent"><span class="muted">سرنخ تو</span><b>${esc(mine.text)}</b><button class="btn ghost small" data-act="unclue">ویرایش</button></div>`
-        : `<form class="clue-form" data-form="clue" data-key="clueform">
-            <input id="clue" data-model="clue" maxlength="24" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="سرنخ یک‌کلمه‌ای" value="${esc(ui.clue)}">
-            <button class="btn primary" ${!ui.clue || err ? 'disabled' : ''}>ثبت</button>
-          </form>
-          <p class="field-msg ${err ? 'bad' : ''}">${err ? esc(err) : 'فقط یک کلمه. تکراری‌ها خط می‌خورند، پس خلاق باش!'}</p>`}
-      ${statusRow(team, written)}
-      <button class="btn ghost small skip ${skipped ? 'on' : ''}" data-act="skip">این واژه را نمی‌شناسم ${t.skips.length ? `(${fa(t.skips.length)} از ${fa(need)})` : ''}</button>`;
+        ? `<div class="clue-box sent" data-key="sent">
+             <span class="muted">سرنخ تو</span>
+             <b class="pop">${esc(mine.text)}</b>
+             <button class="btn ghost small" data-act="unclue">ویرایش</button>
+           </div>`
+        : `<form class="clue-form-big" data-form="clue" data-key="clueform">
+            <label class="clue-box ${err ? 'bad' : ''}" for="clue">
+              <span class="muted">سرنخ یک‌کلمه‌ای برای ${nameOf(t.guesserId)}</span>
+              <input id="clue" data-model="clue" maxlength="24" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" placeholder="بنویس…" value="${esc(ui.clue)}">
+              <span class="field-msg ${err ? 'bad' : ''}">${err ? esc(err) : 'فقط یک کلمه. تکراری‌ها خط می‌خورند!'}</span>
+            </label>
+            <button class="btn primary big" ${!ui.clue || err ? 'disabled' : ''}>ثبت سرنخ</button>
+          </form>`}
+      ${statusRow(team, written)}`;
   }
   return `
     <p class="role-line">تیم ${TEAM[t.team]} سرنخ می‌نویسد؛ آماده‌ی خط زدن باش</p>
@@ -433,7 +476,8 @@ function viewGame() {
   const r = role();
   let body = '';
   let deadlineTotal = 0;
-  if (s.phase === 'clue') { body = viewClue(t, r); deadlineTotal = s.settings.clueTime; }
+  if (s.phase === 'pick') body = viewPick(t, r);
+  else if (s.phase === 'clue') { body = viewClue(t, r); deadlineTotal = s.settings.clueTime; }
   else if (s.phase === 'filter') body = viewFilter(t, r);
   else if (s.phase === 'guess') { body = viewGuess(t, r); deadlineTotal = s.settings.guessTime; }
   else if (s.phase === 'vote') { body = viewVote(t); deadlineTotal = s.settings.voteTime; }
@@ -443,9 +487,10 @@ function viewGame() {
     <div class="topbar">
       <button class="icon-btn" data-act="leave" aria-label="خروج">${icon.back}</button>
       ${scoreboard()}
+      ${muteBtn()}
     </div>
     ${timer(t.deadline, deadlineTotal)}
-    <div class="phase" data-key="ph-${t.id}-${s.phase}-${t.skipped || 0}">${body}</div>
+    <div class="phase" data-key="ph-${t.id}-${s.phase}">${body}</div>
   </section>`;
 }
 
@@ -469,12 +514,33 @@ function render() {
   const key = s ? `${s.phase}-${s.turn?.id || ''}` : 'none';
   if (key !== lastPhaseKey) {
     if (s?.turn && lastPhaseKey) buzz(s.phase === 'reveal' ? [30, 40, 30] : 25);
+    if (s && lastPhaseKey) phaseFx(s);
     if (s?.phase === 'clue') ui.clue = '';
     if (s?.phase === 'guess') ui.guess = '';
     lastPhaseKey = key;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+  lobbyFx();
   morph(app, view());
+}
+
+let lastCount = 0;
+function phaseFx(s) {
+  const t = s.turn;
+  if (s.phase === 'reveal') {
+    if (t.verdict === 'correct') { play('correct'); setTimeout(() => confetti({ count: 90 }), 120); }
+    else play('wrong');
+  } else if (s.phase === 'end') {
+    play('win'); setTimeout(() => confetti({ count: 180 }), 200);
+  } else if (s.phase === 'clue' || s.phase === 'guess') play('reveal');
+  else play('phase');
+}
+
+function lobbyFx() {
+  const s = session.state;
+  const n = s ? Object.keys(s.players).length : 0;
+  if (s?.phase === 'lobby' && n > lastCount && lastCount) play('join');
+  lastCount = n;
 }
 
 function toast(msg) {
@@ -533,21 +599,23 @@ const actions = {
   move: (v) => session.hostDo((g) => g.movePlayer(v)),
   kick: (v) => session.hostDo((g) => g.kick(v)),
   set: (v, el) => session.hostDo((g) => g.updateSettings({ [el.dataset.k]: Number(v) })),
-  cat: (v) => session.hostDo((g) => {
-    if (v === '*') return g.updateSettings({ categories: [] });
-    const cur = new Set(g.s.settings.categories);
-    cur.has(v) ? cur.delete(v) : cur.add(v);
-    if (cur.size === Object.keys(CATEGORIES).length) cur.clear();
-    g.updateSettings({ categories: [...cur] });
-  }),
+  bot: (v) => { play('join'); session.hostDo((g) => g.addBot(Number(v))); },
+  mute: () => { toggleMute(); },
+  pick: (v) => { play('select'); buzz(10); session.act({ type: 'pick', index: Number(v) }); },
+  pickok: () => { play('submit'); session.act({ type: 'pickok' }); },
+  pickundo: () => session.act({ type: 'pickundo' }),
   start: () => session.hostDo((g) => g.start()),
   unclue: () => { ui.clue = session.state.turn.clues[session.id]?.text || ''; session.act({ type: 'unclue' }); },
-  skip: () => session.act({ type: 'skip' }),
-  strike: (v) => { buzz(10); session.act({ type: 'strike', id: v }); },
-  confirm: () => session.act({ type: 'confirm' }),
+  strike: (v) => {
+    buzz(10);
+    const c = session.state.turn.list.find((x) => x.id === v);
+    play(c?.strikes.includes(session.id) ? 'unstrike' : 'strike');
+    session.act({ type: 'strike', id: v });
+  },
+  confirm: () => { play('submit'); session.act({ type: 'confirm' }); },
   unconfirm: () => session.act({ type: 'unconfirm' }),
   giveup: () => session.act({ type: 'giveup' }),
-  vote: (v) => session.act({ type: 'vote', ok: v === '1' }),
+  vote: (v) => { play('select'); session.act({ type: 'vote', ok: v === '1' }); },
   next: () => session.hostDo((g) => g.next()),
   again: () => session.hostDo((g) => g.backToLobby()),
 };
@@ -565,7 +633,9 @@ app.addEventListener('click', (e) => {
   if (!el || el.disabled) return;
   if (el.classList.contains('overlay') && e.target.closest('[data-stop]')) return;
   e.preventDefault();
+  unlock();
   const fn = actions[el.dataset.act];
+  if (!['strike', 'pick', 'vote', 'confirm', 'pickok', 'bot', 'mute'].includes(el.dataset.act)) play('tap');
   if (fn) { Promise.resolve(fn(el.dataset.v, el)).then(() => render()); render(); }
 });
 
@@ -595,9 +665,11 @@ app.addEventListener('submit', (e) => {
     session.act({ type: 'clue', text: ui.clue });
     ui.clue = '';
     buzz(15);
+    play('submit');
   } else if (f === 'guess') {
     if (!ui.guess.trim()) return;
     session.act({ type: 'guess', text: ui.guess });
+    play('submit');
     ui.guess = '';
   }
   document.activeElement?.blur();
@@ -618,7 +690,8 @@ setInterval(() => {
     const txt = fa(sec);
     if (num.textContent !== txt) {
       num.textContent = txt;
-      if (sec <= 5 && sec > 0) buzz(8);
+      if (sec <= 5 && sec > 0) { buzz(8); play('urgent'); }
+      else if (sec <= 10 && sec > 0) play('tick');
     }
     el.classList.toggle('urgent', sec <= 10);
     el.querySelector('.timer-bar span').style.transform = `scaleX(${Math.max(0, Math.min(1, left / total))})`;
@@ -626,3 +699,5 @@ setInterval(() => {
 }, 200);
 
 render();
+
+if (params.get('net') === 'local') window.__radpa = session;

@@ -1,6 +1,7 @@
 // اتصال یک گوشی به اتاق: نقش میزبان (مرجع حالت) یا مهمان
 import { createTransport } from './net.js';
 import { HostGame, newState } from './game.js';
+import { loadWords } from './words.js';
 
 const LS_ID = 'radpa.id';
 const LS_SESSION = 'radpa.session';
@@ -45,6 +46,7 @@ export class Session {
     this.role = 'host';
     this.status = 'connecting';
     this.emit();
+    const wordsP = loadWords().catch(() => ({ list: [], from: 'none' }));
     let code = resume?.code;
     for (let attempt = 0; attempt < 6; attempt++) {
       if (!code) code = String(1000 + Math.floor(Math.random() * 9000));
@@ -62,7 +64,10 @@ export class Session {
     }
     if (!this.tr) throw new Error('no-room');
     const st = resume?.state && resume.state.code === code ? resume.state : newState(code, this.id);
-    this.game = new HostGame(st);
+    const words = await wordsP;
+    this.wordsFrom = words.from;
+    this.wordCount = words.list.length;
+    this.game = new HostGame(st, words.list);
     this.game.join(this.id, profile);
     this.state = st;
     this.tr.onMessage((m) => this.hostMsg(m));

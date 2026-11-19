@@ -14,6 +14,9 @@
   --ok-soft: #E1F5EC;
   --bad: #E5484D;
   --bad-soft: #FDE8E8;
+  --c1: #7C5CFF; --c1-soft: #EEEAFF;
+  --c2: #0FA3A3; --c2-soft: #DFF5F4;
+  --c3: #F2A100; --c3-soft: #FFF3D6;
   --shadow: 0 1px 2px rgba(20, 20, 30, .04), 0 8px 24px rgba(20, 20, 30, .06);
   --r: 20px;
   --spring: cubic-bezier(.34, 1.56, .64, 1);
@@ -26,6 +29,7 @@
     --line: #2A2A2F; --soft: #232327;
     --a: #6E8FFF; --a-soft: #1E2645; --b: #FF8F5E; --b-soft: #3A2318;
     --ok: #3CCB91; --ok-soft: #12302A; --bad: #FF6B6F; --bad-soft: #3A1A1C;
+    --c1: #9D86FF; --c1-soft: #251F42; --c2: #35C6C2; --c2-soft: #12302F; --c3: #FFC043; --c3-soft: #3A2E12;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
     color-scheme: dark;
   }
@@ -121,7 +125,8 @@ input::placeholder { color: var(--muted); opacity: .7; }
 /* ---------- خانه ---------- */
 .home-head { text-align: center; padding: 28px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .tagline { color: var(--muted); font-size: 17px; }
-.avatars { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.avatars { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-height: 172px; overflow-y: auto; padding: 4px; margin: -4px; scrollbar-width: none; -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }
+.avatars::-webkit-scrollbar { display: none; }
 .avatar { aspect-ratio: 1; border-radius: 12px; font-size: 22px; display: grid; place-items: center; transition: transform .2s var(--spring), background .2s; }
 .avatar.on { background: var(--soft); transform: scale(1.12); box-shadow: inset 0 0 0 2px var(--ink); }
 .avatar:active { transform: scale(.9); }
@@ -188,7 +193,7 @@ input::placeholder { color: var(--muted); opacity: .7; }
 .score.team-1 b { color: var(--b); }
 .score.active.team-0 { box-shadow: inset 0 0 0 2px var(--a), var(--shadow); }
 .score.active.team-1 { box-shadow: inset 0 0 0 2px var(--b), var(--shadow); }
-.round { text-align: center; line-height: 1.1; }
+.round { text-align: center; line-height: 1.1; white-space: nowrap; }
 .round small { display: block; font-size: 11px; color: var(--muted); }
 .round b { font-size: 18px; }
 .round b span { font-size: 12px; color: var(--muted); font-weight: 500; }
@@ -307,6 +312,56 @@ input::placeholder { color: var(--muted); opacity: .7; }
 .rules { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); }
 .banner { position: sticky; top: 0; z-index: 5; margin: -16px -16px 12px; padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; background: var(--bad); color: #fff; text-align: center; font-size: 14px; animation: slideDown .3s var(--ease); }
 .toast { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 24px); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 14px; font-size: 14px; z-index: 20; animation: sheet .3s var(--ease); max-width: calc(100% - 32px); text-align: center; }
+
+/* ---------- انتخاب واژه ---------- */
+.options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.options li { animation: enter .5s var(--spring) both; animation-delay: calc(var(--i) * 90ms); }
+.option {
+  position: relative; width: 100%; min-height: 104px; border-radius: 24px; padding: 18px 20px;
+  display: flex; align-items: center; justify-content: center;
+  border: 3px solid transparent; transition: transform .25s var(--spring), border-color .2s, box-shadow .25s, background .2s;
+}
+.option b { font-size: 40px; font-weight: 900; line-height: 1.2; }
+.option:active:not(:disabled) { transform: scale(.97); }
+.opt-0 { background: var(--c1-soft); color: var(--c1); }
+.opt-1 { background: var(--c2-soft); color: var(--c2); }
+.opt-2 { background: var(--c3-soft); color: color-mix(in srgb, var(--c3) 75%, var(--ink)); }
+.option.on { border-color: currentColor; transform: scale(1.02); box-shadow: 0 10px 28px color-mix(in srgb, currentColor 25%, transparent); }
+.option:disabled:not(.on) { opacity: .45; }
+.option .voters { position: absolute; inset-inline-start: 14px; bottom: 10px; display: flex; gap: 2px; font-size: 18px; }
+.option .voters i { font-style: normal; animation: pop .35s var(--spring); }
+.option .tick { position: absolute; inset-inline-end: 14px; top: 14px; width: 30px; height: 30px; border-radius: 50%; background: currentColor; display: grid; place-items: center; animation: pop .35s var(--spring); }
+.option .tick svg { color: var(--bg); }
+
+/* ---------- سرنخ بزرگ ---------- */
+.word-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border-radius: 18px; }
+.word-strip span { font-size: 13px; opacity: .8; }
+.word-strip b { font-size: 30px; font-weight: 900; }
+.clue-form-big { display: flex; flex-direction: column; gap: 12px; }
+.clue-box {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  min-height: max(220px, 42dvh); padding: 20px 16px; border-radius: 28px;
+  background: var(--card); box-shadow: var(--shadow); border: 3px solid var(--line);
+  transition: border-color .2s, box-shadow .25s; cursor: text;
+}
+.clue-box:focus-within { border-color: var(--ink); box-shadow: 0 0 0 6px color-mix(in srgb, var(--ink) 8%, transparent), var(--shadow); }
+.clue-box.bad { border-color: var(--bad); }
+.clue-box input {
+  border: 0; background: transparent; box-shadow: none !important; height: auto; padding: 0;
+  font-size: clamp(40px, 13vw, 64px); font-weight: 900; text-align: center; line-height: 1.3;
+}
+.clue-box input::placeholder { font-weight: 500; opacity: .35; }
+.clue-box .field-msg { margin: 0; }
+.clue-box.sent b { font-size: clamp(40px, 13vw, 64px); font-weight: 900; }
+
+/* ---------- ربات ---------- */
+.add-bot { margin-top: 8px; width: 100%; height: 38px; border-radius: 12px; border: 1.5px dashed var(--line); color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; transition: transform .15s var(--spring), border-color .2s; }
+.add-bot:active { transform: scale(.96); }
+.bot-tag { font-size: 10px; padding: 0 6px; border-radius: 99px; background: var(--ink); color: var(--bg); flex: none; }
+.words-src { padding-top: 10px; }
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 30; }
+.topbar .icon-btn[data-act=mute] { margin-inline-start: auto; }
+.game .topbar .scoreboard { min-width: 0; }
 
 @media (max-width: 360px) {
   .logo-lg .logo-word { font-size: 46px; }
